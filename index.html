@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draft War Room — Superflex PPR</title>
+<style>
+  :root{
+    --bg:#0e1620; --panel:#152030; --panel2:#1b2838; --line:#26374a;
+    --ink:#e7eef6; --mut:#8ba0b6; --dim:#5f7086;
+    --amber:#ffb020; --amber-dk:#3a2c10;
+    --mine:#3fb950; --mine-dk:#123018;
+    --qb:#f2555a; --rb:#35c07f; --wr:#4a9df5; --te:#c07ff2;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}
+  body{padding-bottom:40px}
+  a{color:inherit}
+  button{font-family:var(--sans);cursor:pointer;border:none}
+
+  /* status bar */
+  .status{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,#101b28,#0e1620);
+    border-bottom:1px solid var(--line);padding:10px 12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .status .clock{font-family:var(--mono);font-size:13px;color:var(--mut);letter-spacing:.5px}
+  .status .clock b{color:var(--ink);font-size:15px}
+  .turn{margin-left:auto;font-family:var(--mono);font-weight:700;font-size:14px;
+    padding:6px 12px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--mut)}
+  .turn.now{background:var(--amber);color:#1a1205;border-color:var(--amber);animation:pulse 1.1s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,176,32,.5)}50%{box-shadow:0 0 0 8px rgba(255,176,32,0)}}
+  .brand{font-weight:800;letter-spacing:-.5px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--amber)}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:12px;display:grid;grid-template-columns:1fr 320px;gap:12px}
+  @media(max-width:860px){.wrap{grid-template-columns:1fr}}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .panel h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mut);
+    margin:0;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
+
+  /* controls */
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap}
+  .tab{font-family:var(--mono);font-size:12px;font-weight:700;padding:6px 11px;border-radius:6px;
+    background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
+  .tab.on{background:var(--ink);color:#0e1620}
+  .tab.pos-QB.on{background:var(--qb);color:#fff}
+  .tab.pos-RB.on{background:var(--rb);color:#04140b}
+  .tab.pos-WR.on{background:var(--wr);color:#04121f}
+  .tab.pos-TE.on{background:var(--te);color:#160b23}
+  input.search{flex:1;min-width:120px;background:var(--bg);border:1px solid var(--line);color:var(--ink);
+    border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:13px}
+  input.search::placeholder{color:var(--dim)}
+  .mini{font-family:var(--mono);font-size:11px;font-weight:700;padding:6px 9px;border-radius:6px;
+    background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
+  .mini:hover{color:var(--ink)}
+
+  /* board */
+  .tiergrp{border-bottom:1px solid var(--line)}
+  .tierhead{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#111c29;
+    font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px;position:sticky;top:52px;z-index:10}
+  .tierhead .cnt{margin-left:auto}
+  .tierhead.thin{color:var(--amber)}
+  .row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid #1a2735}
+  .row:first-child{border-top:none}
+  .rk{font-family:var(--mono);font-size:11px;color:var(--dim);width:26px;text-align:right;flex:none}
+  .pos{font-family:var(--mono);font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;flex:none;width:30px;text-align:center}
+  .pos.QB{background:rgba(242,85,90,.16);color:var(--qb)}
+  .pos.RB{background:rgba(53,192,127,.16);color:var(--rb)}
+  .pos.WR{background:rgba(74,157,245,.16);color:var(--wr)}
+  .pos.TE{background:rgba(192,127,242,.16);color:var(--te)}
+  .nm{flex:1;min-width:0}
+  .nm .n{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nm .t{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .tag{font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:.5px;padding:1px 5px;border-radius:3px;
+    background:var(--amber-dk);color:var(--amber);margin-left:6px;vertical-align:middle}
+  .acts{display:flex;gap:6px;flex:none}
+  .b{font-family:var(--mono);font-size:11px;font-weight:800;padding:7px 10px;border-radius:6px;border:1px solid var(--line)}
+  .b.me{background:var(--mine-dk);color:var(--mine);border-color:#1e4a2b}
+  .b.me:hover{background:var(--mine);color:#04140b}
+  .b.tk{background:var(--panel2);color:var(--mut)}
+  .b.tk:hover{background:#33475c;color:var(--ink)}
+  .ppg{font-family:var(--mono);font-size:14px;font-weight:800;color:var(--ink);width:50px;text-align:right;flex:none;line-height:1.05}
+  .ppg i{display:block;font-style:normal;font-size:9px;font-weight:600;color:var(--dim)}
+  .ppg.na{color:var(--dim);font-weight:400}
+  .ppg.proj{color:var(--amber);font-weight:800}
+  .ppg.proj i{color:var(--dim)}
+  .ba .p b.proj{color:var(--amber)}
+  .tab.pos-RK.on{background:var(--amber);color:#1a1205}
+  .tag.rec{background:var(--mine-dk);color:var(--mine)}
+  .ba .p b{color:var(--ink)}
+  .empty{padding:24px 12px;text-align:center;color:var(--dim);font-family:var(--mono);font-size:12px}
+
+  /* best available */
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+  .ba .cell{background:var(--panel);padding:8px 10px}
+  .ba .lab{font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:4px}
+  .ba .lab.QB{color:var(--qb)} .ba .lab.RB{color:var(--rb)} .ba .lab.WR{color:var(--wr)} .ba .lab.TE{color:var(--te)}
+  .ba .p{font-size:13px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ba .p .rk{width:auto;margin-right:5px}
+
+  /* roster */
+  .slots{padding:6px 12px}
+  .slot{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a2735;font-size:13px}
+  .slot:last-child{border-bottom:none}
+  .slot .lab{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--mut);width:66px;flex:none}
+  .slot .fill{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot .fill.need{color:var(--dim);font-style:italic}
+  .needbar{padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--mut);border-top:1px solid var(--line);background:var(--panel2)}
+  .needbar .chip{display:inline-block;padding:2px 7px;border-radius:4px;background:var(--amber-dk);color:var(--amber);margin:2px 4px 2px 0;font-weight:800}
+  .needbar .ok{color:var(--mine)}
+
+  /* config */
+  details.cfg{border-top:1px solid var(--line)}
+  details.cfg>summary{list-style:none;cursor:pointer;padding:9px 12px;font-family:var(--mono);font-size:11px;
+    letter-spacing:1px;text-transform:uppercase;color:var(--mut);background:var(--panel2)}
+  details.cfg>summary::-webkit-details-marker{display:none}
+  .cfgbody{padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fld{display:flex;flex-direction:column;gap:3px}
+  .fld label{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.5px}
+  .fld input{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:6px 8px;font-family:var(--mono);font-size:13px}
+  .cfgnote{grid-column:1/-1;font-size:11px;color:var(--dim);line-height:1.5}
+  .addrow{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+  .addrow input{flex:1;min-width:70px}
+  .io{grid-column:1/-1;display:flex;gap:6px}
+  .io textarea{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--mut);border-radius:5px;
+    font-family:var(--mono);font-size:10px;height:44px;padding:6px}
+
+  .disc{max-width:1100px;margin:0 auto;padding:0 12px 8px;font-size:11px;color:var(--dim);line-height:1.5}
+  .disc b{color:var(--amber)}
+</style>
+</head>
+<body>
+
+<div class="status">
+  <div class="brand"><span class="dot"></span>DRAFT WAR ROOM</div>
+  <div class="clock">PICK <b id="s-pick">1</b> · RD <b id="s-rd">1</b> · <span id="s-drafted">0</span> gone</div>
+  <div class="turn" id="s-turn">next: —</div>
+</div>
+
+<div class="disc">
+  Starting board = superflex full-PPR consensus, late-Aug 2026. Rushing QBs nudged up for your 4pt-pass-TD / −2-INT scoring (<b>RUSH</b> tag). Teams/tiers are a launch point — <b>verify vs your platform and edit live.</b> Board auto-saves in this browser. <b>PPG</b> = 2025 regular-season points/game in your scoring (pass yds 1/25, rush &amp; rec 1/10, rush/rec TD 6, your 4pt pass TD &amp; −2 INT, full PPR); small number = games played. Rookies / players who missed 2025 show –. The <b>ROOKIE</b> tab lists 2026 first-years by projection; ~ marks a projected PPG (no NFL history yet). <b style="color:var(--mine)">PPR</b> tags RBs with 3.0+ catches/game in 2025 — the pass-catching backs worth extra in full PPR.
+</div>
+
+<div class="wrap">
+  <!-- LEFT: board -->
+  <section class="panel">
+    <h2>Available players</h2>
+    <div class="bar">
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-pos="ALL">ALL</button>
+        <button class="tab pos-QB" data-pos="QB">QB</button>
+        <button class="tab pos-RB" data-pos="RB">RB</button>
+        <button class="tab pos-WR" data-pos="WR">WR</button>
+        <button class="tab pos-TE" data-pos="TE">TE</button>
+        <button class="tab pos-RK" data-pos="ROOKIE">ROOKIE</button>
+      </div>
+      <input class="search" id="search" placeholder="find a player…" autocomplete="off">
+      <button class="mini" id="undo">&#8634; undo</button>
+      <button class="mini" id="sortbtn">sort: RANK</button>
+    </div>
+    <div id="board"></div>
+  </section>
+
+  <!-- RIGHT: intel -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <section class="panel">
+      <h2>Best available</h2>
+      <div class="ba" id="ba"></div>
+    </section>
+
+    <section class="panel">
+      <h2>My roster</h2>
+      <div class="slots" id="slots"></div>
+      <div class="needbar" id="needs"></div>
+    </section>
+
+    <section class="panel">
+      <details class="cfg">
+        <summary>League setup & tools</summary>
+        <div class="cfgbody">
+          <div class="fld"><label>Teams</label><input id="c-teams" type="number" min="2" max="20" value="12"></div>
+          <div class="fld"><label>My draft slot</label><input id="c-slot" type="number" min="1" max="20" value="6"></div>
+          <div class="fld"><label>QB slots</label><input id="c-qb" type="number" min="0" max="4" value="1"></div>
+          <div class="fld"><label>RB slots</label><input id="c-rb" type="number" min="0" max="6" value="2"></div>
+          <div class="fld"><label>WR slots</label><input id="c-wr" type="number" min="0" max="6" value="3"></div>
+          <div class="fld"><label>TE slots</label><input id="c-te" type="number" min="0" max="3" value="1"></div>
+          <div class="fld"><label>FLEX (R/W/T)</label><input id="c-flex" type="number" min="0" max="4" value="1"></div>
+          <div class="fld"><label>SUPERFLEX</label><input id="c-sf" type="number" min="0" max="4" value="1"></div>
+          <div class="cfgnote">If your league uses 2 dedicated QB slots instead of QB+SF, set QB=2 and SUPERFLEX=0. Bench isn't tracked as slots — extra picks show under BENCH.</div>
+          <div class="addrow">
+            <input id="a-name" placeholder="add player: name">
+            <input id="a-pos" placeholder="POS" style="max-width:56px;text-transform:uppercase">
+            <input id="a-team" placeholder="team" style="max-width:64px">
+            <button class="mini" id="a-btn">+ add</button>
+          </div>
+          <div class="io">
+            <textarea id="io-box" placeholder="Export/Import backup JSON (paste + Load to restore)"></textarea>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="mini" id="io-save">export</button>
+              <button class="mini" id="io-load">load</button>
+            </div>
+          </div>
+          <div class="io" style="justify-content:flex-end">
+            <button class="mini" id="reset" style="color:var(--qb);border-color:#4a1e22">reset draft</button>
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ---------- defensive storage (works standalone via localStorage, falls back in sandbox) ---------- */
+const store=(()=>{const mem={};let ok=true;try{const k="__t";localStorage.setItem(k,"1");localStorage.removeItem(k);}catch(e){ok=false;}
+  return{get:k=>{try{return ok?localStorage.getItem(k):mem[k]}catch(e){return mem[k]}},
+         set:(k,v)=>{try{ok?localStorage.setItem(k,v):(mem[k]=v)}catch(e){mem[k]=v}}}})();
+const SKEY="warroom_v1";
+
+/* ---------- preloaded board (superflex full-PPR, rush-QB adjusted) ----------
+   rank=overall superflex order; t=tier within position; tag optional             */
+const PPG={"Lamar Jackson":{"ppg":16.5,"g":13},"Josh Allen":{"ppg":22.8,"g":16},"Jayden Daniels":{"ppg":16.3,"g":7},"Jalen Hurts":{"ppg":18.8,"g":16},"Patrick Mahomes":{"ppg":20.4,"g":14},"Joe Burrow":{"ppg":16.8,"g":8},"Kyler Murray":{"ppg":15.6,"g":5},"Caleb Williams":{"ppg":18.7,"g":17},"Bo Nix":{"ppg":17.9,"g":17},"Drake Maye":{"ppg":20.7,"g":17},"Justin Fields":{"ppg":15.9,"g":9},"Dak Prescott":{"ppg":18.5,"g":17},"Jared Goff":{"ppg":17.5,"g":17},"Justin Herbert":{"ppg":17.9,"g":16},"C.J. Stroud":{"ppg":14.9,"g":14},"Brock Purdy":{"ppg":19.7,"g":9},"Jordan Love":{"ppg":15.7,"g":15},"Cam Ward":{"ppg":11.0,"g":17},"Baker Mayfield":{"ppg":16.0,"g":17},"Jaxson Dart":{"ppg":17.3,"g":14},"J.J. McCarthy":{"ppg":12.5,"g":10},"Michael Penix Jr.":{"ppg":13.4,"g":9},"Trevor Lawrence":{"ppg":19.9,"g":17},"Tua Tagovailoa":{"ppg":11.5,"g":14},"Matthew Stafford":{"ppg":20.6,"g":17},"Bijan Robinson":{"ppg":21.8,"g":17},"Jahmyr Gibbs":{"ppg":21.6,"g":17},"Saquon Barkley":{"ppg":14.5,"g":16},"De'Von Achane":{"ppg":20.2,"g":16},"Ashton Jeanty":{"ppg":14.4,"g":17},"Christian McCaffrey":{"ppg":24.5,"g":17},"Jonathan Taylor":{"ppg":21.3,"g":17},"Bucky Irving":{"ppg":13.8,"g":10},"Josh Jacobs":{"ppg":15.8,"g":15},"Derrick Henry":{"ppg":16.4,"g":17},"Kyren Williams":{"ppg":15.5,"g":17},"James Cook":{"ppg":17.8,"g":17},"Chase Brown":{"ppg":16.6,"g":17},"Kenneth Walker III":{"ppg":11.3,"g":17},"Omarion Hampton":{"ppg":15.1,"g":9},"Breece Hall":{"ppg":13.0,"g":16},"Quinshon Judkins":{"ppg":12.1,"g":14},"TreVeyon Henderson":{"ppg":12.1,"g":17},"Chuba Hubbard":{"ppg":8.4,"g":15},"Alvin Kamara":{"ppg":9.2,"g":11},"David Montgomery":{"ppg":9.8,"g":17},"Tony Pollard":{"ppg":10.9,"g":17},"Isiah Pacheco":{"ppg":6.7,"g":13},"Aaron Jones":{"ppg":9.9,"g":12},"RJ Harvey":{"ppg":12.2,"g":17},"Tyrone Tracy Jr.":{"ppg":10.7,"g":15},"Jaylen Warren":{"ppg":13.6,"g":16},"Rhamondre Stevenson":{"ppg":12.8,"g":14},"Jaydon Blue":{"ppg":4.1,"g":5},"Ja'Marr Chase":{"ppg":19.6,"g":16},"Justin Jefferson":{"ppg":11.9,"g":17},"CeeDee Lamb":{"ppg":15.5,"g":13},"Puka Nacua":{"ppg":23.4,"g":16},"Malik Nabers":{"ppg":14.3,"g":4},"Amon-Ra St. Brown":{"ppg":19.1,"g":17},"Nico Collins":{"ppg":15.1,"g":15},"Brian Thomas Jr.":{"ppg":9.9,"g":14},"Drake London":{"ppg":16.8,"g":12},"A.J. Brown":{"ppg":14.7,"g":15},"Ladd McConkey":{"ppg":11.3,"g":16},"Jaxon Smith-Njigba":{"ppg":21.2,"g":17},"Tyreek Hill":{"ppg":13.4,"g":4},"Tee Higgins":{"ppg":14.1,"g":15},"Garrett Wilson":{"ppg":14.2,"g":7},"Marvin Harrison Jr.":{"ppg":10.6,"g":12},"Davante Adams":{"ppg":15.9,"g":14},"Terry McLaurin":{"ppg":11.4,"g":10},"DK Metcalf":{"ppg":12.5,"g":15},"Tetairoa McMillan":{"ppg":12.6,"g":17},"DeVonta Smith":{"ppg":11.9,"g":17},"Zay Flowers":{"ppg":14.3,"g":17},"Jaylen Waddle":{"ppg":12.1,"g":16},"DJ Moore":{"ppg":10.1,"g":17},"Rome Odunze":{"ppg":12.2,"g":12},"Xavier Worthy":{"ppg":7.8,"g":14},"Courtland Sutton":{"ppg":12.9,"g":17},"Jerry Jeudy":{"ppg":7.1,"g":17},"Chris Olave":{"ppg":16.8,"g":16},"Jordan Addison":{"ppg":9.6,"g":14},"Mike Evans":{"ppg":10.6,"g":8},"Calvin Ridley":{"ppg":6.8,"g":7},"George Pickens":{"ppg":17.2,"g":17},"Jameson Williams":{"ppg":12.9,"g":17},"Rashee Rice":{"ppg":18.8,"g":8},"Jauan Jennings":{"ppg":11.6,"g":15},"Luther Burden III":{"ppg":8.5,"g":15},"Khalil Shakir":{"ppg":10.4,"g":16},"Jakobi Meyers":{"ppg":11.0,"g":16},"Ricky Pearsall":{"ppg":9.8,"g":9},"Keon Coleman":{"ppg":8.5,"g":12},"Matthew Golden":{"ppg":5.0,"g":14},"Brock Bowers":{"ppg":14.7,"g":12},"Trey McBride":{"ppg":18.6,"g":17},"George Kittle":{"ppg":14.7,"g":11},"Sam LaPorta":{"ppg":11.9,"g":9},"T.J. Hockenson":{"ppg":7.5,"g":15},"Mark Andrews":{"ppg":7.7,"g":17},"David Njoku":{"ppg":7.8,"g":11},"Colston Loveland":{"ppg":10.3,"g":16},"Tyler Warren":{"ppg":11.1,"g":17},"Dalton Kincaid":{"ppg":10.5,"g":12},"Evan Engram":{"ppg":6.4,"g":16},"Jonnu Smith":{"ppg":5.0,"g":17},"Gunnar Helm":{"ppg":5.7,"g":16},"Harold Fannin Jr.":{"ppg":11.6,"g":16},"Tucker Kraft":{"ppg":14.6,"g":8},"Dallas Goedert":{"ppg":12.3,"g":15},"Kyle Pitts":{"ppg":12.4,"g":17},"Jake Ferguson":{"ppg":11.1,"g":17},"Dalton Schultz":{"ppg":10.5,"g":17},"Hunter Henry":{"ppg":10.5,"g":17},"Juwan Johnson":{"ppg":10.6,"g":17},"Oronde Gadsden II":{"ppg":8.8,"g":15},"Zach Ertz":{"ppg":9.7,"g":13},"Pat Freiermuth":{"ppg":7.6,"g":15},"Chig Okonkwo":{"ppg":7.3,"g":17},"Cade Otton":{"ppg":8.1,"g":15},"Theo Johnson":{"ppg":8.5,"g":15},"AJ Barner":{"ppg":8.7,"g":17},"Brenton Strange":{"ppg":9.8,"g":12}};
+const ROOK={"Fernando Mendoza":{"rr":1,"p":"QB","tm":"LV","pj":12.5},"Jeremiyah Love":{"rr":2,"p":"RB","tm":"ARI","pj":12.5},"Carnell Tate":{"rr":3,"p":"WR","tm":"TEN","pj":10.4},"Jadarian Price":{"rr":4,"p":"RB","tm":"SEA","pj":10.0},"Makai Lemon":{"rr":5,"p":"WR","tm":"PHI","pj":9.9},"KC Concepcion":{"rr":6,"p":"WR","tm":"CLE","pj":9.2},"Denzel Boston":{"rr":7,"p":"WR","tm":"CLE","pj":7.9},"De'Zhaun Stribling":{"rr":8,"p":"WR","tm":"SF","pj":7.6},"Omar Cooper":{"rr":9,"p":"WR","tm":"NYJ","pj":7.5},"Jordyn Tyson":{"rr":10,"p":"WR","tm":"NO","pj":6.5},"Malachi Fields":{"rr":11,"p":"WR","tm":"NYG","pj":6.2},"Ja'Kobi Lane":{"rr":12,"p":"WR","tm":"BAL","pj":6.2},"Kenyon Sadiq":{"rr":13,"p":"TE","tm":"NYJ","pj":5.9},"Germie Bernard":{"rr":14,"p":"WR","tm":"PIT","pj":5.8},"Ted Hurst":{"rr":15,"p":"WR","tm":"TB","pj":5.8},"Mike Washington":{"rr":16,"p":"RB","tm":"LV","pj":5.7},"Caleb Douglas":{"rr":17,"p":"WR","tm":"MIA","pj":5.6},"Cyrus Allen":{"rr":18,"p":"WR","tm":"KC","pj":5.6},"Eli Stowers":{"rr":19,"p":"TE","tm":"PHI","pj":4.8},"Zachariah Branch":{"rr":20,"p":"WR","tm":"ATL","pj":4.6},"Antonio Williams":{"rr":21,"p":"WR","tm":"WAS","pj":4.4},"Chris Bell":{"rr":22,"p":"WR","tm":"MIA","pj":4.0},"Emmett Johnson":{"rr":23,"p":"RB","tm":"KC","pj":3.8},"Jonah Coleman":{"rr":24,"p":"RB","tm":"DEN","pj":3.8},"Kaelon Black":{"rr":25,"p":"RB","tm":"SF","pj":null},"Dean Connors":{"rr":26,"p":"RB","tm":"LAR","pj":null}};
+const SEED=[
+ // QBs — rush-first for 4pt-pass-TD scoring
+ {n:"Lamar Jackson",p:"QB",tm:"BAL",t:1,r:2,g:"RUSH"},
+ {n:"Josh Allen",p:"QB",tm:"BUF",t:1,r:3,g:"RUSH"},
+ {n:"Jayden Daniels",p:"QB",tm:"WAS",t:1,r:4,g:"RUSH"},
+ {n:"Jalen Hurts",p:"QB",tm:"PHI",t:1,r:6,g:"RUSH"},
+ {n:"Patrick Mahomes",p:"QB",tm:"KC",t:2,r:9},
+ {n:"Joe Burrow",p:"QB",tm:"CIN",t:2,r:12},
+ {n:"Kyler Murray",p:"QB",tm:"ARI",t:2,r:16,g:"RUSH"},
+ {n:"Caleb Williams",p:"QB",tm:"CHI",t:2,r:18},
+ {n:"Bo Nix",p:"QB",tm:"DEN",t:3,r:22,g:"RUSH"},
+ {n:"Drake Maye",p:"QB",tm:"NE",t:3,r:26,g:"RUSH"},
+ {n:"Justin Fields",p:"QB",tm:"NYJ",t:3,r:30,g:"RUSH"},
+ {n:"Dak Prescott",p:"QB",tm:"DAL",t:3,r:34},
+ {n:"Jared Goff",p:"QB",tm:"DET",t:3,r:38},
+ {n:"Justin Herbert",p:"QB",tm:"LAC",t:3,r:41},
+ {n:"C.J. Stroud",p:"QB",tm:"HOU",t:3,r:44},
+ {n:"Brock Purdy",p:"QB",tm:"SF",t:4,r:52},
+ {n:"Jordan Love",p:"QB",tm:"GB",t:4,r:55},
+ {n:"Cam Ward",p:"QB",tm:"TEN",t:4,r:60,g:"RUSH"},
+ {n:"Baker Mayfield",p:"QB",tm:"TB",t:4,r:64},
+ {n:"Jaxson Dart",p:"QB",tm:"NYG",t:4,r:70,g:"RUSH"},
+ {n:"J.J. McCarthy",p:"QB",tm:"MIN",t:4,r:78},
+ {n:"Michael Penix Jr.",p:"QB",tm:"ATL",t:5,r:86},
+ {n:"Trevor Lawrence",p:"QB",tm:"JAX",t:5,r:92},
+ {n:"Tua Tagovailoa",p:"QB",tm:"MIA",t:5,r:98},
+ {n:"Fernando Mendoza",p:"QB",tm:"—",t:5,r:110,g:"RK"},
+ {n:"Matthew Stafford",p:"QB",tm:"LAR",t:5,r:116},
+
+ // RBs
+ {n:"Bijan Robinson",p:"RB",tm:"ATL",t:1,r:7,g:"PPR"},
+ {n:"Jahmyr Gibbs",p:"RB",tm:"DET",t:1,r:8,g:"PPR"},
+ {n:"Saquon Barkley",p:"RB",tm:"PHI",t:1,r:11},
+ {n:"De'Von Achane",p:"RB",tm:"MIA",t:1,r:15,g:"PPR"},
+ {n:"Ashton Jeanty",p:"RB",tm:"LV",t:2,r:19,g:"PPR"},
+ {n:"Christian McCaffrey",p:"RB",tm:"SF",t:2,r:24,g:"PPR"},
+ {n:"Jonathan Taylor",p:"RB",tm:"IND",t:2,r:27},
+ {n:"Bucky Irving",p:"RB",tm:"TB",t:2,r:29,g:"PPR"},
+ {n:"Josh Jacobs",p:"RB",tm:"GB",t:2,r:33},
+ {n:"Derrick Henry",p:"RB",tm:"BAL",t:2,r:35},
+ {n:"Kyren Williams",p:"RB",tm:"LAR",t:3,r:39},
+ {n:"James Cook",p:"RB",tm:"BUF",t:3,r:42},
+ {n:"Chase Brown",p:"RB",tm:"CIN",t:3,r:45,g:"PPR"},
+ {n:"Kenneth Walker III",p:"RB",tm:"SEA",t:3,r:48},
+ {n:"Omarion Hampton",p:"RB",tm:"LAC",t:3,r:50,g:"PPR"},
+ {n:"Breece Hall",p:"RB",tm:"NYJ",t:3,r:53},
+ {n:"Quinshon Judkins",p:"RB",tm:"CLE",t:3,r:56},
+ {n:"TreVeyon Henderson",p:"RB",tm:"NE",t:3,r:59},
+ {n:"Jeremiyah Love",p:"RB",tm:"ARI",t:3,r:62,g:"RK"},
+ {n:"Chuba Hubbard",p:"RB",tm:"CAR",t:4,r:66},
+ {n:"Alvin Kamara",p:"RB",tm:"NO",t:4,r:69,g:"PPR"},
+ {n:"Joe Mixon",p:"RB",tm:"HOU",t:4,r:73},
+ {n:"David Montgomery",p:"RB",tm:"DET",t:4,r:76},
+ {n:"Tony Pollard",p:"RB",tm:"TEN",t:4,r:80},
+ {n:"Isiah Pacheco",p:"RB",tm:"KC",t:4,r:84},
+ {n:"Aaron Jones",p:"RB",tm:"MIN",t:4,r:88},
+ {n:"RJ Harvey",p:"RB",tm:"DEN",t:4,r:91},
+ {n:"Tyrone Tracy Jr.",p:"RB",tm:"NYG",t:5,r:96},
+ {n:"Jaylen Warren",p:"RB",tm:"PIT",t:5,r:100},
+ {n:"Rhamondre Stevenson",p:"RB",tm:"NE",t:5,r:104},
+ {n:"Jonah Coleman",p:"RB",tm:"DEN",t:5,r:108,g:"RK"},
+ {n:"Jaydon Blue",p:"RB",tm:"DAL",t:5,r:114},
+ {n:"Jadarian Price",p:"RB",tm:"—",t:5,r:120,g:"RK"},
+
+ // WRs
+ {n:"Ja'Marr Chase",p:"WR",tm:"CIN",t:1,r:1},
+ {n:"Justin Jefferson",p:"WR",tm:"MIN",t:1,r:5},
+ {n:"CeeDee Lamb",p:"WR",tm:"DAL",t:1,r:13},
+ {n:"Puka Nacua",p:"WR",tm:"LAR",t:1,r:14},
+ {n:"Malik Nabers",p:"WR",tm:"NYG",t:1,r:17},
+ {n:"Amon-Ra St. Brown",p:"WR",tm:"DET",t:2,r:20},
+ {n:"Nico Collins",p:"WR",tm:"HOU",t:2,r:21},
+ {n:"Brian Thomas Jr.",p:"WR",tm:"JAX",t:2,r:23},
+ {n:"Drake London",p:"WR",tm:"ATL",t:2,r:25},
+ {n:"A.J. Brown",p:"WR",tm:"—",t:2,r:28,g:"MOVED"},
+ {n:"Ladd McConkey",p:"WR",tm:"LAC",t:2,r:31},
+ {n:"Jaxon Smith-Njigba",p:"WR",tm:"SEA",t:2,r:32},
+ {n:"Tyreek Hill",p:"WR",tm:"MIA",t:3,r:36},
+ {n:"Tee Higgins",p:"WR",tm:"CIN",t:3,r:37},
+ {n:"Garrett Wilson",p:"WR",tm:"NYJ",t:3,r:40},
+ {n:"Marvin Harrison Jr.",p:"WR",tm:"ARI",t:3,r:43},
+ {n:"Davante Adams",p:"WR",tm:"LAR",t:3,r:46},
+ {n:"Terry McLaurin",p:"WR",tm:"WAS",t:3,r:47},
+ {n:"DK Metcalf",p:"WR",tm:"PIT",t:3,r:49},
+ {n:"Tetairoa McMillan",p:"WR",tm:"CAR",t:3,r:51},
+ {n:"DeVonta Smith",p:"WR",tm:"PHI",t:3,r:54},
+ {n:"Zay Flowers",p:"WR",tm:"BAL",t:4,r:57},
+ {n:"Jaylen Waddle",p:"WR",tm:"MIA",t:4,r:58},
+ {n:"DJ Moore",p:"WR",tm:"CHI",t:4,r:61},
+ {n:"Rome Odunze",p:"WR",tm:"CHI",t:4,r:63},
+ {n:"Xavier Worthy",p:"WR",tm:"KC",t:4,r:65},
+ {n:"Courtland Sutton",p:"WR",tm:"DEN",t:4,r:67},
+ {n:"Jerry Jeudy",p:"WR",tm:"CLE",t:4,r:68},
+ {n:"Chris Olave",p:"WR",tm:"NO",t:4,r:71},
+ {n:"Jordan Addison",p:"WR",tm:"MIN",t:4,r:72},
+ {n:"Mike Evans",p:"WR",tm:"TB",t:4,r:74},
+ {n:"Calvin Ridley",p:"WR",tm:"TEN",t:5,r:77},
+ {n:"George Pickens",p:"WR",tm:"DAL",t:5,r:79},
+ {n:"Jameson Williams",p:"WR",tm:"DET",t:5,r:81},
+ {n:"Rashee Rice",p:"WR",tm:"KC",t:5,r:82},
+ {n:"Jauan Jennings",p:"WR",tm:"SF",t:5,r:83},
+ {n:"Luther Burden III",p:"WR",tm:"CHI",t:5,r:85},
+ {n:"Khalil Shakir",p:"WR",tm:"BUF",t:5,r:87},
+ {n:"Jakobi Meyers",p:"WR",tm:"LV",t:5,r:89},
+ {n:"Carnell Tate",p:"WR",tm:"—",t:5,r:90,g:"RK"},
+ {n:"Ricky Pearsall",p:"WR",tm:"SF",t:6,r:94},
+ {n:"Keon Coleman",p:"WR",tm:"BUF",t:6,r:97},
+ {n:"Makai Lemon",p:"WR",tm:"—",t:6,r:102,g:"RK"},
+ {n:"Matthew Golden",p:"WR",tm:"GB",t:6,r:106},
+
+ // TEs — top-26 by 2025 production, ordered for 2026 draft value
+ {n:"Brock Bowers",p:"TE",tm:"LV",t:1,r:10},
+ {n:"Trey McBride",p:"TE",tm:"ARI",t:1,r:13},
+ {n:"George Kittle",p:"TE",tm:"SF",t:2,r:31},
+ {n:"Tyler Warren",p:"TE",tm:"IND",t:2,r:46},
+ {n:"Sam LaPorta",p:"TE",tm:"DET",t:2,r:53},
+ {n:"Tucker Kraft",p:"TE",tm:"GB",t:3,r:67},
+ {n:"Harold Fannin Jr.",p:"TE",tm:"CLE",t:3,r:73},
+ {n:"Dallas Goedert",p:"TE",tm:"PHI",t:3,r:79},
+ {n:"Colston Loveland",p:"TE",tm:"CHI",t:3,r:86},
+ {n:"Kyle Pitts",p:"TE",tm:"ATL",t:3,r:91},
+ {n:"Jake Ferguson",p:"TE",tm:"DAL",t:3,r:97},
+ {n:"T.J. Hockenson",p:"TE",tm:"MIN",t:4,r:106},
+ {n:"Mark Andrews",p:"TE",tm:"BAL",t:4,r:113},
+ {n:"Dalton Kincaid",p:"TE",tm:"BUF",t:4,r:119},
+ {n:"Evan Engram",p:"TE",tm:"DEN",t:4,r:124},
+ {n:"Dalton Schultz",p:"TE",tm:"HOU",t:4,r:128},
+ {n:"Hunter Henry",p:"TE",tm:"NE",t:4,r:131},
+ {n:"Juwan Johnson",p:"TE",tm:"NO",t:5,r:134},
+ {n:"Oronde Gadsden II",p:"TE",tm:"LAC",t:5,r:136},
+ {n:"Zach Ertz",p:"TE",tm:"WAS",t:5,r:138},
+ {n:"Pat Freiermuth",p:"TE",tm:"PIT",t:5,r:140},
+ {n:"Chig Okonkwo",p:"TE",tm:"TEN",t:5,r:142},
+ {n:"Cade Otton",p:"TE",tm:"TB",t:5,r:144},
+ {n:"Theo Johnson",p:"TE",tm:"NYG",t:5,r:146},
+ {n:"AJ Barner",p:"TE",tm:"SEA",t:5,r:148},
+ {n:"Brenton Strange",p:"TE",tm:"JAX",t:5,r:150},
+];
+
+/* ---------- state ---------- */
+let S=load();
+function enrich(players){
+  players.forEach(p=>{const s=PPG[p.n]||{};if(p.ppg===undefined)p.ppg=(s.ppg!=null?s.ppg:null);if(p.gp===undefined)p.gp=(s.g!=null?s.g:null);
+    const rk=ROOK[p.n];if(rk){p.rk=1;p.rr=rk.rr;p.pj=(rk.pj!=null?rk.pj:null);if(rk.tm)p.tm=rk.tm;}});
+  const have=new Set(players.map(p=>p.n));let nid=players.reduce((m,p)=>Math.max(m,(+p.id||0)),0);
+  Object.keys(ROOK).forEach(n=>{if(!have.has(n)){const rk=ROOK[n];players.push({id:++nid,n,p:rk.p,tm:rk.tm,t:6,r:150+rk.rr,st:"avail",g:"RK",rk:1,rr:rk.rr,pj:(rk.pj!=null?rk.pj:null),ppg:null,gp:null});}});
+  return players;
+}
+function freshPlayers(){return enrich(SEED.map((p,i)=>({id:i+1,...p,st:"avail"})));}
+function load(){
+  const raw=store.get(SKEY);
+  if(raw){try{const o=JSON.parse(raw);if(o&&o.players){o.sort=o.sort||"rank";enrich(o.players);return o;}}catch(e){}}
+  return {cfg:{teams:12,slot:6,qb:1,rb:2,wr:3,te:1,flex:1,sf:1},
+          players:freshPlayers(), hist:[], filter:"ALL", q:"", sort:"rank"};
+}
+function save(){store.set(SKEY,JSON.stringify(S))}
+
+/* ---------- snake pick math ---------- */
+function draftedCount(){return S.players.filter(p=>p.st!=="avail").length}
+function myPickNums(count){const N=S.cfg.teams,Sl=S.cfg.slot,out=[];
+  for(let r=1;r<=count;r++){out.push(r%2===1?(r-1)*N+Sl:(r-1)*N+(N-Sl+1));}return out;}
+function pickInfo(){
+  const N=S.cfg.teams, cur=draftedCount()+1, rd=Math.ceil(cur/N);
+  const mine=myPickNums(60).filter(x=>x>=cur);
+  const next=mine[0]||cur, until=next-cur;
+  return {cur,rd,next,until,after:mine[1]};
+}
+
+/* ---------- rendering ---------- */
+const $=id=>document.getElementById(id);
+const POSC={QB:"QB",RB:"RB",WR:"WR",TE:"TE"};
+
+function render(){
+  // status
+  const pi=pickInfo();
+  $("s-pick").textContent=pi.cur;
+  $("s-rd").textContent=pi.rd;
+  $("s-drafted").textContent=draftedCount();
+  const turn=$("s-turn");
+  if(pi.until===0){turn.textContent="YOU'RE UP";turn.className="turn now";}
+  else{turn.textContent=`your pick #${pi.next} · ${pi.until} away`;turn.className="turn";
+       if(pi.until<=2)turn.style.color="var(--amber)";else turn.style.color="";}
+
+  renderBoard();
+  renderBA();
+  renderRoster();
+}
+
+function currentTierThin(pos){ // is the top remaining tier for a pos nearly empty?
+  const av=S.players.filter(p=>p.st==="avail"&&p.p===pos).sort((a,b)=>a.t-b.t||a.r-b.r);
+  if(!av.length)return null;
+  const topT=av[0].t, left=av.filter(p=>p.t===topT).length;
+  return {topT,left};
+}
+
+function cellPPG(p){
+  if(p.ppg!=null) return `<span class="ppg">${p.ppg.toFixed(1)}${p.gp!=null?`<i>${p.gp}g</i>`:''}</span>`;
+  if(p.pj!=null) return `<span class="ppg proj">~${p.pj.toFixed(1)}<i>proj</i></span>`;
+  return `<span class="ppg na">\u2013</span>`;
+}
+function renderBoard(){
+  const box=$("board"); box.innerHTML="";
+  const q=S.q.trim().toLowerCase();
+  let list=S.players.filter(p=>p.st==="avail")
+    .filter(p=>S.filter==="ALL"?true:(S.filter==="ROOKIE"?!!p.rk:p.p===S.filter))
+    .filter(p=>!q||p.n.toLowerCase().includes(q)||(p.tm||"").toLowerCase().includes(q))
+    .sort(S.filter==="ROOKIE"?((a,b)=>((a.rr??999)-(b.rr??999))):(S.sort==="ppg"?((a,b)=>((b.ppg??-1)-(a.ppg??-1))||(a.r-b.r)):((a,b)=>a.r-b.r)));
+  if(!list.length){box.innerHTML='<div class="empty">no available players match — clear the search or reset</div>';return;}
+
+  // ALL = flat ranked list; a position filter = grouped by tier with run alerts
+  const grouped=S.filter!=="ALL"&&S.filter!=="ROOKIE"&&S.sort!=="ppg";
+  let lastKey=null;
+  list.forEach(p=>{
+    const key=p.p+"·T"+p.t;
+    if(grouped&&key!==lastKey){
+      lastKey=key;
+      const th=document.createElement("div");
+      const sameTier=list.filter(x=>x.p===p.p&&x.t===p.t).length;
+      const thin=sameTier<=2;
+      th.className="tierhead"+(thin?" thin":"");
+      th.innerHTML=`<span style="color:var(--${p.p.toLowerCase()})">${p.p}</span> · TIER ${p.t}`
+        +`<span class="cnt">${sameTier} left${thin?" ⚠ run risk":""}</span>`;
+      box.appendChild(th);
+    }
+    const row=document.createElement("div"); row.className="row";
+    row.innerHTML=
+      `<span class="rk">${Math.round(p.r)}</span>`+
+      `<span class="pos ${p.p}">${p.p}</span>`+
+      `<span class="nm"><div class="n">${esc(p.n)}${p.g?`<span class="tag${p.g==='PPR'?' rec':''}">${p.g}</span>`:""}</div>`+
+      `<div class="t">${esc(p.tm||"")}</div></span>`+
+      cellPPG(p)+
+      `<span class="acts"><button class="b me" data-me="${p.id}">MINE</button>`+
+      `<button class="b tk" data-tk="${p.id}">TAKEN</button></span>`;
+    box.appendChild(row);
+  });
+}
+
+function renderBA(){
+  const box=$("ba"); box.innerHTML="";
+  ["QB","RB","WR","TE"].forEach(pos=>{
+    const av=S.players.filter(p=>p.st==="avail"&&p.p===pos).sort((a,b)=>a.r-b.r).slice(0,3);
+    const cell=document.createElement("div"); cell.className="cell";
+    cell.innerHTML=`<div class="lab ${pos}">${pos}</div>`+
+      (av.length?av.map(p=>`<div class="p"><span class="rk">${Math.round(p.r)}</span>${esc(p.n)}${p.ppg!=null?` <b>${p.ppg.toFixed(1)}</b>`:(p.pj!=null?` <b class="proj">~${p.pj.toFixed(1)}</b>`:"")}</div>`).join("")
+      :`<div class="p" style="color:var(--dim)">—</div>`);
+    box.appendChild(cell);
+  });
+}
+
+function renderRoster(){
+  const mine=S.players.filter(p=>p.st==="mine").sort((a,b)=>a.r-b.r);
+  const c=S.cfg;
+  const slots=[];
+  const def=(lab,posArr,count)=>{for(let i=0;i<count;i++)slots.push({lab,posArr});};
+  def("QB",["QB"],c.qb); def("RB",["RB"],c.rb); def("WR",["WR"],c.wr); def("TE",["TE"],c.te);
+  def("FLEX",["RB","WR","TE"],c.flex); def("SUPERFLEX",["QB","RB","WR","TE"],c.sf);
+  const pool=[...mine];
+  const filled=slots.map(s=>{
+    // best available-in-pool player matching this slot
+    const idx=pool.findIndex(p=>s.posArr.includes(p.p));
+    if(idx>=0){const pl=pool.splice(idx,1)[0];return{...s,pl};}
+    return{...s,pl:null};
+  });
+  // leftover = bench
+  const box=$("slots"); box.innerHTML="";
+  filled.forEach(s=>{
+    const row=document.createElement("div"); row.className="slot";
+    row.innerHTML=`<span class="lab">${s.lab}</span>`+
+      (s.pl?`<span class="fill">${esc(s.pl.n)} <span style="color:var(--dim)">${s.pl.p}·${esc(s.pl.tm||"")}</span></span>`
+           :`<span class="fill need">— open —</span>`);
+    box.appendChild(row);
+  });
+  pool.forEach(p=>{
+    const row=document.createElement("div"); row.className="slot";
+    row.innerHTML=`<span class="lab">BENCH</span><span class="fill">${esc(p.n)} <span style="color:var(--dim)">${p.p}·${esc(p.tm||"")}</span></span>`;
+    box.appendChild(row);
+  });
+  if(!mine.length){box.innerHTML='<div class="empty" style="padding:14px">no picks yet — hit MINE when you draft</div>';}
+
+  // needs bar
+  const open=filled.filter(s=>!s.pl);
+  const nb=$("needs");
+  if(!open.length){nb.innerHTML='<span class="ok">✓ starting lineup full</span>';}
+  else{
+    const counts={};open.forEach(s=>{const k=s.lab;counts[k]=(counts[k]||0)+1;});
+    nb.innerHTML="need: "+Object.entries(counts).map(([k,v])=>`<span class="chip">${k}${v>1?" ×"+v:""}</span>`).join("");
+  }
+}
+
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}
+
+/* ---------- actions ---------- */
+function setStatus(id,st){
+  const p=S.players.find(x=>x.id===id); if(!p)return;
+  S.hist.push({id,prev:p.st}); if(S.hist.length>200)S.hist.shift();
+  p.st=st; save(); render();
+}
+function undo(){const h=S.hist.pop(); if(!h)return; const p=S.players.find(x=>x.id===h.id); if(p){p.st=h.prev;save();render();}}
+
+document.addEventListener("click",e=>{
+  const me=e.target.closest("[data-me]"), tk=e.target.closest("[data-tk]");
+  if(me)setStatus(+me.dataset.me,"mine");
+  else if(tk)setStatus(+tk.dataset.tk,"taken");
+});
+$("tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;
+  S.filter=b.dataset.pos;[...$("tabs").children].forEach(x=>x.classList.toggle("on",x===b));save();renderBoard();});
+$("search").addEventListener("input",e=>{S.q=e.target.value;renderBoard();});
+$("undo").addEventListener("click",undo);
+$("sortbtn").addEventListener("click",()=>{S.sort=S.sort==="ppg"?"rank":"ppg";$("sortbtn").textContent="sort: "+(S.sort==="ppg"?"PPG":"RANK");save();renderBoard();});
+
+// config inputs
+const cfgMap={"c-teams":"teams","c-slot":"slot","c-qb":"qb","c-rb":"rb","c-wr":"wr","c-te":"te","c-flex":"flex","c-sf":"sf"};
+Object.keys(cfgMap).forEach(id=>{const el=$(id);el.value=S.cfg[cfgMap[id]];
+  el.addEventListener("input",()=>{const v=Math.max(0,parseInt(el.value||"0"));S.cfg[cfgMap[id]]=v;save();render();});});
+
+// add player
+$("a-btn").addEventListener("click",()=>{
+  const n=$("a-name").value.trim(),p=($("a-pos").value.trim()||"").toUpperCase(),tm=$("a-team").value.trim();
+  if(!n||!["QB","RB","WR","TE"].includes(p)){alert("Enter a name and a valid POS (QB/RB/WR/TE)");return;}
+  const maxR=Math.max(...S.players.map(x=>x.r),0);
+  const maxT=Math.max(...S.players.filter(x=>x.p===p).map(x=>x.t),0)||1;
+  S.players.push({id:Date.now(),n,p,tm,t:maxT,r:maxR+1,st:"avail",g:"ADD"});
+  $("a-name").value="";$("a-team").value="";save();render();
+});
+
+// export / import
+$("io-save").addEventListener("click",()=>{$("io-box").value=JSON.stringify(S);$("io-box").select();});
+$("io-load").addEventListener("click",()=>{try{const o=JSON.parse($("io-box").value);if(o&&o.players){S=o;save();syncCfgInputs();render();}else alert("Not valid backup JSON");}catch(e){alert("Couldn't parse that JSON");}});
+function syncCfgInputs(){Object.keys(cfgMap).forEach(id=>$(id).value=S.cfg[cfgMap[id]]);$("search").value=S.q||"";
+  [...$("tabs").children].forEach(x=>x.classList.toggle("on",x.dataset.pos===S.filter));
+  $("sortbtn").textContent="sort: "+((S.sort||"rank")==="ppg"?"PPG":"RANK");}
+
+// reset
+$("reset").addEventListener("click",()=>{if(confirm("Reset the whole draft? This clears every pick."))
+  {S={cfg:S.cfg,players:freshPlayers(),hist:[],filter:"ALL",q:"",sort:"rank"};save();syncCfgInputs();render();}});
+
+syncCfgInputs();
+render();
+</script>
+</body>
+</html>
